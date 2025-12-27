@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, session, redirect, make_response
-from flask_cors import CORS  # <-- Make sure this line is present
+from flask_cors import CORS
 import os
 import base64
 import json
@@ -11,8 +11,18 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Enable CORS for all routes and allow your Netlify domain
-CORS(app, resources={r"/*": {"origins": [" https://math-frontendocr.netlify.app/", "http://localhost:*"]}}) 
+# FIXED: Remove extra space and add proper origins
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://math-frontendocr.netlify.app",
+            "http://localhost:*"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
+
 # Define log file path
 LOG_FILE = '/tmp/login_logs.json'
 
@@ -103,12 +113,12 @@ def analyze():
         }}]
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-4o",
             messages=[{
                 "role": "user",
                 "content": [{"type": "text", "text": prompt}] + file_contents
             }],
-            max_completion_tokens=9000,
+            max_tokens=9000,
             temperature=0.3
         )
         result_text = response.choices[0].message.content.strip()
@@ -159,9 +169,9 @@ def reanalyze():
         Return JSON: {{"status": "", "error": "", "correct_solution": "", "response": ""}}
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
+            max_tokens=2000,
             temperature=0.3
         )
         result_text = response.choices[0].message.content.strip()
@@ -203,9 +213,9 @@ def generate_practice():
         Return JSON array: [{{"number": "number", "question": "modified with $LaTeX$"}}]
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-4o",
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
+            max_tokens=2000,
             temperature=0.7
         )
         result_text = response.choices[0].message.content.strip()
@@ -223,6 +233,11 @@ def generate_practice():
             return jsonify({'error': f'Failed to parse: {str(e)}'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Health check endpoint
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy'}), 200
 
 if __name__ == '__main__':
     app.run(debug=False, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))

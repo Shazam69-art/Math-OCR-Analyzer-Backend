@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, session, redirect, make_response
-from flask_cors import CORS
+from flask_cors import CORS  # <-- Make sure this line is present
 import os
 import base64
 import json
@@ -11,17 +11,8 @@ app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# FIXED: Remove extra space and add proper origins
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://math-frontendocr.netlify.app",
-            "http://localhost:*"
-        ],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"]
-    }
-})
+# Enable CORS for all routes and allow your Netlify domain
+CORS(app, resources={r"/*": {"origins": ["https://math-frontendocr.netlify.app/", "http://localhost:*"]}})
 
 # Define log file path
 LOG_FILE = '/tmp/login_logs.json'
@@ -234,11 +225,5 @@ def generate_practice():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# Health check endpoint
-@app.route('/health', methods=['GET'])
-def health():
-    return jsonify({'status': 'healthy'}), 200
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 8080))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))

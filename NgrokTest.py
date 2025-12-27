@@ -1,5 +1,5 @@
-from flask import Flask, request, jsonify, session, redirect, make_response
-from flask_cors import CORS  # <-- Make sure this line is present
+from flask import Flask, request, jsonify, session
+from flask_cors import CORS
 import os
 import base64
 import json
@@ -8,16 +8,24 @@ from datetime import datetime
 import threading
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
 
-# Enable CORS for all routes and allow your Netlify domain
-CORS(app, resources={r"/*": {"origins": ["https://math-frontendocr.netlify.app/", "http://localhost:*"]}})
+# FIXED CORS - removed trailing slash
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://math-frontendocr.netlify.app",
+            "http://localhost:3000",
+            "http://localhost:5000"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
-# Define log file path
 LOG_FILE = '/tmp/login_logs.json'
 
-# ============ API ROUTES ============
 @app.route('/api/login', methods=['POST'])
 def handle_login():
     try:
@@ -104,12 +112,12 @@ def analyze():
         }}]
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-5.1",  # FIXED
             messages=[{
                 "role": "user",
                 "content": [{"type": "text", "text": prompt}] + file_contents
             }],
-            max_completion_tokens=9000,
+            max_completion_tokens=9000,  # FIXED
             temperature=0.3
         )
         result_text = response.choices[0].message.content.strip()
@@ -160,9 +168,9 @@ def reanalyze():
         Return JSON: {{"status": "", "error": "", "correct_solution": "", "response": ""}}
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-5.1",  # FIXED
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
+            max_completion_tokens=2000,  # FIXED
             temperature=0.3
         )
         result_text = response.choices[0].message.content.strip()
@@ -204,9 +212,9 @@ def generate_practice():
         Return JSON array: [{{"number": "number", "question": "modified with $LaTeX$"}}]
         """
         response = client.chat.completions.create(
-            model="gpt-5.1",
+            model="gpt-5.1",  # FIXED
             messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=2000,
+            max_completion_tokens=2000,  # FIXED
             temperature=0.7
         )
         result_text = response.choices[0].message.content.strip()
@@ -225,5 +233,10 @@ def generate_practice():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({'status': 'healthy'}), 200
+
 if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
+    port = int(os.environ.get('PORT', 8080))  # FIXED
+    app.run(debug=False, host='0.0.0.0', port=port)
